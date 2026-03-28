@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEA — Forecast</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">HEA <span>Hospital Emergency Allocation</span></div>
+  <nav class="header-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="beds.html">Beds</a>
+    <a href="forecast.html" class="active">Forecast</a>
+    <a href="reports.html">Reports</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+      <div class="page-title" style="border:none;">72-Hour Forecast</div>
+      <div style="font-size:12px;color:#6b6b6b;" id="model-status">Loading...</div>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="loadForecast()">↻ Refresh</button>
+  </div>
+
+  <!-- Forecast chart card -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title">Predicted Admission Load — Next 3 Days</div>
+    <div id="forecast-chart"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- Detailed table -->
+  <div class="card">
+    <div class="card-title">Forecast Details</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Date</th>
+            <th>Total Admissions</th>
+            <th>Emergency</th>
+            <th>ICU</th>
+            <th>Holiday</th>
+            <th>Surge Alert</th>
+          </tr>
+        </thead>
+        <tbody id="forecast-tbody">
+          <tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px;font-size:12px;color:#6b6b6b;">
+    <strong>How it works:</strong> The AI uses a Random Forest model trained on historical admissions
+    (including Indian public holiday surges). If the model hasn't been trained yet, it falls back
+    to a rule-based estimate. Run <code>python ml/train_model.py</code> in the backend folder
+    to enable ML predictions.
+  </div>
+</main>
+
+<script src="js/charts.js"></script>
+<script>
+  const API = 'http://localhost:5000/api';
+
+  async function loadForecast() {
+    try {
+      const data = await fetch(`${API}/forecast`).then(r => r.json());
+      renderForecastBars('forecast-chart', data);
+
+      const modelUsed = data[0]?.model_used || 'unknown';
+      document.getElementById('model-status').textContent =
+        modelUsed === 'trained_rf'
+          ? '✓ Using trained Random Forest model'
+          : '⚠ Using rule-based fallback — run ml/train_model.py to enable AI';
+
+      const tbody = document.getElementById('forecast-tbody');
+      tbody.innerHTML = data.map(d => `
+        <tr>
+          <td><strong>${d.day}</strong></td>
+          <td>${d.date}</td>
+          <td style="font-weight:600;">${d.predicted_admissions}</td>
+          <td style="color:#c62828;">${d.predicted_emergency}</td>
+          <td style="color:#e65100;">${d.predicted_icu}</td>
+          <td>${d.is_holiday ? '<span class="badge badge-amber">Holiday</span>' : '—'}</td>
+          <td>${d.surge_alert ? '<span class="badge badge-red">SURGE</span>' : '<span class="badge badge-green">Normal</span>'}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      document.getElementById('forecast-chart').innerHTML =
+        '<div class="empty-state"><p>Cannot reach API. Is <code>python app.py</code> running?</p></div>';
+    }
+  }
+
+  loadForecast();
+</script>
+</body>
+</html>

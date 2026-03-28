@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEA — Reports</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">HEA <span>Hospital Emergency Allocation</span></div>
+  <nav class="header-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="beds.html">Beds</a>
+    <a href="forecast.html">Forecast</a>
+    <a href="reports.html" class="active">Reports</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+    <div class="page-title" style="border:none;">Reports &amp; Audit Log</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="loadAudit()">↻ Refresh</button>
+      <button class="btn btn-primary btn-sm" onclick="downloadPDF()">⬇ Download PDF Report</button>
+    </div>
+  </div>
+
+  <!-- Quick stats bar -->
+  <div class="grid-4" id="report-stats" style="margin-bottom:20px;">
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- Audit log -->
+  <div class="card">
+    <div class="card-title">Audit Log <span style="font-size:11px;color:#6b6b6b;font-weight:400;">(last 100 actions)</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Action</th><th>Details</th><th>Performed By</th></tr>
+        </thead>
+        <tbody id="audit-tbody">
+          <tr><td colspan="4" class="loading"><div class="spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="js/charts.js"></script>
+<script>
+  const API = 'http://localhost:5000/api';
+
+  const ACTION_LABELS = {
+    PATIENT_ADMIT:      { label: 'Admitted',    color: '#2e7d32' },
+    PATIENT_DISCHARGE:  { label: 'Discharged',  color: '#1a4480' },
+    BED_ALLOCATE:       { label: 'Bed Alloc.',  color: '#2563a8' },
+    BED_RELEASE:        { label: 'Bed Release', color: '#6b6b6b' },
+    BED_STATUS_CHANGE:  { label: 'Bed Status',  color: '#e65100' },
+    RESOURCE_UPDATE:    { label: 'Resource',    color: '#e65100' },
+  };
+
+  async function loadAudit() {
+    try {
+      const [dashboard, audit] = await Promise.all([
+        fetch(`${API}/dashboard`).then(r => r.json()),
+        fetch(`${API}/reports/audit`).then(r => r.json()),
+      ]);
+
+      // Quick stats
+      const bs = dashboard.bed_summary || [];
+      const totalBeds = bs.reduce((a, w) => a + w.total, 0);
+      const occupied  = bs.reduce((a, w) => a + w.occupied, 0);
+      const available = bs.reduce((a, w) => a + w.available, 0);
+      const ps = dashboard.patient_stats || {};
+
+      document.getElementById('report-stats').innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">Total Beds</div>
+          <div class="stat-value">${totalBeds}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Occupied</div>
+          <div class="stat-value" style="color:#c62828;">${occupied}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Available</div>
+          <div class="stat-value" style="color:#2e7d32;">${available}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Patients</div>
+          <div class="stat-value">${ps.total_active || 0}</div>
+        </div>
+      `;
+
+      // Audit table
+      if (!audit.length) {
+        document.getElementById('audit-tbody').innerHTML =
+          '<tr><td colspan="4" style="text-align:center;color:#6b6b6b;padding:20px;">No activity yet.</td></tr>';
+        return;
+      }
+
+      document.getElementById('audit-tbody').innerHTML = audit.map(row => {
+        const meta = ACTION_LABELS[row.action] || { label: row.action, color: '#4a4a4a' };
+        return `
+          <tr>
+            <td style="white-space:nowrap;font-size:11px;color:#6b6b6b;">${formatTimestamp(row.timestamp)}</td>
+            <td><span style="font-size:11px;font-weight:600;color:${meta.color};">${meta.label}</span></td>
+            <td style="font-size:12px;">${row.details || '—'}</td>
+            <td style="font-size:11px;color:#6b6b6b;">${row.performed_by || 'system'}</td>
+          </tr>
+        `;
+      }).join('');
+    } catch (e) {
+      document.getElementById('audit-tbody').innerHTML =
+        '<tr><td colspan="4" style="text-align:center;color:#c62828;padding:20px;">Cannot reach API. Is <code>python app.py</code> running?</td></tr>';
+    }
+  }
+
+  async function downloadPDF() {
+    showToast('Generating PDF…', '');
+    try {
+      const res = await fetch(`${API}/reports/pdf`);
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error); }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = 'HEA_Report.pdf'; a.click();
+      URL.revokeObjectURL(url);
+      showToast('PDF downloaded!', 'success');
+    } catch (e) {
+      showToast('PDF error: ' + e.message, 'error');
+    }
+  }
+
+  loadAudit();
+</script>
+</body>
+</html>

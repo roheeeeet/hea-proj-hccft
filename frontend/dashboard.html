@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEA — Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">
+    HEA
+    <span>Hospital Emergency Allocation</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="beds.html">Beds</a>
+    <a href="forecast.html">Forecast</a>
+    <a href="reports.html">Reports</a>
+  </nav>
+</header>
+
+<main class="main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+      <div class="page-title" style="margin-bottom:2px;border:none;">Dashboard</div>
+      <div style="font-size:12px;color:#6b6b6b;" id="last-updated">Loading...</div>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+  </div>
+
+  <!-- Alerts -->
+  <div id="alerts-container" class="alerts-section"></div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="stat-card"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Bed occupancy by ward -->
+    <div class="card">
+      <div class="card-title">Bed Occupancy by Ward</div>
+      <div id="ward-occupancy"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- Resources -->
+    <div class="card">
+      <div class="card-title">Resource Availability</div>
+      <div id="resources-list"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <div class="section-divider" style="margin-top:24px;">
+    <h2>Active Patients</h2>
+  </div>
+
+  <!-- Admit patient modal trigger -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+    <button class="btn btn-success btn-sm" onclick="openAdmitModal()">+ Admit Patient</button>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Age</th><th>Condition</th>
+            <th>Priority</th><th>Ward / Bed</th><th>Admitted</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="patients-tbody">
+          <tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Admit Patient Modal -->
+<div class="modal-overlay" id="admit-modal">
+  <div class="modal-box">
+    <div class="modal-title">Admit New Patient</div>
+    <div class="form-row">
+      <div class="form-group"><label>Full Name</label><input type="text" id="p-name" placeholder="Patient name"></div>
+      <div class="form-group"><label>Age</label><input type="number" id="p-age" placeholder="Age"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Gender</label>
+        <select id="p-gender">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="p-priority">
+          <option value="normal">Normal</option>
+          <option value="urgent">Urgent</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Condition / Diagnosis</label><input type="text" id="p-condition" placeholder="e.g. Fracture, Fever"></div>
+      <div class="form-group">
+        <label>Preferred Ward</label>
+        <select id="p-ward">
+          <option value="">Auto-assign</option>
+          <option value="General">General</option>
+          <option value="ICU">ICU</option>
+          <option value="Emergency">Emergency</option>
+          <option value="Pediatric">Pediatric</option>
+          <option value="Maternity">Maternity</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeAdmitModal()">Cancel</button>
+      <button class="btn btn-success" onclick="admitPatient()">Admit & Assign Bed</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/dashboard.js"></script>
+</body>
+</html>
